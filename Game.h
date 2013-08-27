@@ -4,6 +4,7 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 
+#include <sstream>
 #include <vector>
 
 #include "DLinkedList.h"
@@ -26,7 +27,7 @@ private:
 	AnimatedVertexArray m_objectiveTriangle;
 	bool m_paused;
 	bool m_pausedKeyDown;
-	sf::Vector2f m_pauseMousePosition;
+	sf::Vector2i m_pauseMousePosition;
 	int m_maxBalls;
 	int m_minBalls;
 	int m_averageBalls;
@@ -37,6 +38,7 @@ private:
 	sf::Clock m_clock;
 	sf::RectangleShape m_pauseDim;
 	sf::Music m_backgroundMusic;
+	int m_pointsPerBall;
 
 	void HandleEvents();
 	void SpawnNewBalls();
@@ -47,16 +49,23 @@ private:
 	void ProcessObjective();
 	void AddCumilativePoints();
 	void GeneratePointsText();
+	void CheckPause();
 	void Render();
 
 	sf::Vector2f SeedStartingRandomBallPosition();
 	sf::Vector2f SeedRandomBallPosition();
+	bool CheckCircleCollision(const sf::CircleShape &p_circle1, const sf::CircleShape &p_circle2);
+	void BeginPause();
+	void EndPause();
 
 
 public:
-	Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimer, int p_objectiveArc, int p_maxBalls, int m_minBalls, std::string p_pointsFontFile,
-			sf::Vector2f p_pointsPosition, int p_pointsSize, sf::Color p_pointsColor,  int p_pauseDimAlpha, std::string p_backgroundMusicFile, int p_backgroundMusicVolume);
+	Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimer, int p_objectiveArc, int p_maxBalls, 
+		int m_minBalls, const sf::Font &p_font, sf::Vector2f p_pointsPosition, int p_pointsSize, 
+		sf::Color p_pointsColor,  int p_pauseDimAlpha, std::string p_backgroundMusicFile, int p_backgroundMusicVolume, 
+		int p_pointsPerBall);
 	Game();
+
 	void Run();
 	
 

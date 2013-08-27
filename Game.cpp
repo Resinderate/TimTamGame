@@ -1,6 +1,9 @@
 #include "Game.h"
 
-Game::Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimer, int p_objectiveArc, int p_maxBalls, int p_minBalls, std::string p_pointsFontFile, sf::Vector2f p_pointsPosition, int p_pointsSize, sf::Color p_pointsColor,  int p_pauseDimAlpha, std::string p_backgroundMusicFile, int p_backgroundMusicVolume) :
+Game::Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimer, int p_objectiveArc, int p_maxBalls, 
+		   int p_minBalls, const sf::Font &p_font, sf::Vector2f p_pointsPosition, int p_pointsSize, 
+		   sf::Color p_pointsColor,  int p_pauseDimAlpha, std::string p_backgroundMusicFile, int p_backgroundMusicVolume, 
+		   int p_pointsPerBall) :
 	m_window(&p_window),
 	m_ballRadius(p_ballRadius), //15
 	m_objectiveHue(0),
@@ -17,10 +20,11 @@ Game::Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimer, i
 	m_obstacles(),
 	m_obstacleReactions(),
 	m_player(p_window.getSize().x/2, p_window.getSize().y/2, sf::Color::White),
-	m_points(),
+	m_points("", p_font),
 	m_clock(),
 	m_pauseDim(),
-	m_backgroundMusic()
+	m_backgroundMusic(),
+	m_pointsPerBall(p_pointsPerBall)
 {
 	srand(time(0));
 	for(int i = 0; i < m_averageBalls; i++)
@@ -30,10 +34,7 @@ Game::Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimer, i
 		int vel = ((rand() % 3) + 2);
 		m_obstacles.Append(Ball(randomStart.x, randomStart.y, vel*-1, vel, ColorUtil::HueToRGB(hue), hue));
 	}
-	sf::Font fontRabbit;
-	if(!fontRabbit.loadFromFile(p_pointsFontFile)) {}
-	//throw some shit
-	m_points.setFont(fontRabbit);
+	
 	m_points.setPosition(p_pointsPosition);
 	m_points.setCharacterSize(p_pointsSize);
 	m_points.setColor(p_pointsColor);
@@ -64,23 +65,27 @@ Game::Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimer, i
 
 void Game::Run()
 {
+	//This will have to change to something letting it come back to the main menu
+	while(m_window->isOpen())
+	{
 	//Run the game loop.
+	HandleEvents();
 
+	if(!m_paused)
+	{
+		SpawnNewBalls();
+		MoveObstacles();
+		MoveObstacleReactions();
+		CheckCollisions();
+		CheckBallsLeavingScreen();
+		ProcessObjective();
+		AddCumilativePoints();
+		GeneratePointsText();
+	}
 
-	//Handle Events
-
-	//if not paused
-	//Spawn any new balls
-	//Move the balls
-	//Move the broken ball animations
-	//Check collision
-	//Check if any balls have left the screeen
-	//Change Objective color if needed, and animate
-	//Add extra points
-	//Generate Points Text
-
-	//Render
-	//If paused render extra stuff
+	CheckPause();
+	Render();
+	}
 }
 
 void Game::HandleEvents()
@@ -148,34 +153,107 @@ void Game::MoveObstacleReactions()
 
 void Game::CheckCollisions()
 {
+	for(DListIterator<Ball> i = m_obstacles.GetIterator(); i.Valid(); i.Forth())
+	{
+		if(CheckCircleCollision(m_player.getCircle(), i.Item().getCircle()))
+		{
+			int currentHue = i.Item().getHue() % 300;
+			if( (currentHue - m_objectiveHue) <= 60 && (currentHue - m_objectiveHue)  >= -60)
+				m_player.setMultiplier(m_player.getMultiplier() + 1);
+			else
+				m_player.setMultiplier(1);	//Back to deafault.
 
+			//Could use the ball color too, check it out
+			m_obstacleReactions.Append(AnimatedBall(i.Item().getCircle().getPosition(), sf::Color(i.Item().getColor())));
+			m_obstacles.Remove(i);
+			//amount of points for a ball
+			m_player.addPoints(m_pointsPerBall);
+		}
+	}
 }
 
 void Game::CheckBallsLeavingScreen()
 {
-
+	for(DListIterator<Ball> i = m_obstacles.GetIterator(); i.Valid(); i.Forth())
+	{
+		if(i.Item().getX() < 0 - m_ballRadius || i.Item().getY() > m_window->getSize().y + m_ballRadius)
+		{
+			m_obstacles.Remove(i);
+		}
+	}
 }
 
 void Game::ProcessObjective()
 {
+	if(m_clock.getElapsedTime().asSeconds() > m_objectiveTimer)
+	{
+		int currentObjectiveHue = m_objectiveHue;
+		while(m_objectiveHue == currentObjectiveHue)
+		{
+			int randIndex = rand() % 3;
+			m_objectiveHue = m_objectiveColors[randIndex];
+		}
+		m_objectiveTriangle.getVerts()[1].color = ColorUtil::HueToRGB(m_objectiveHue);
+		m_objectiveTriangle.reset();
+		m_clock.restart();
+	}
 
+	if(m_objectiveTriangle.isMoving())
+		m_objectiveTriangle.move();
 }
 
 void Game::AddCumilativePoints()
 {
-
+	//add a points per tick to have the points always increasing, adds to the mood of the game
+	m_player.addPoints(1);
 }
 
 void Game::GeneratePointsText()
 {
+	std::ostringstream ss;
 
+	ss << "x";
+	ss << m_player.getMultiplier();
+	ss << " ";
+	ss << m_player.getPoints();
+
+	std::string pointsStr = ss.str();
+	m_points.setString(sf::String(pointsStr));
+}
+
+void Game::CheckPause()
+{
+	bool pauseKeyDownThisFrame = sf::Keyboard::isKeyPressed(sf::Keyboard::P);
+
+	if(!m_pausedKeyDown && pauseKeyDownThisFrame)
+	{
+		if(!m_paused)
+		{
+			BeginPause();
+		}
+		else
+		{
+			EndPause();
+		}
+	}
+	m_pausedKeyDown = pauseKeyDownThisFrame;
 }
 
 void Game::Render()
 {
+	m_window->clear();
 
+	m_window->draw(m_points);
+	m_window->draw(m_objectiveTriangle.getVerts());
+	for(DListIterator<Ball> i = m_obstacles.GetIterator(); i.Valid(); i.Forth())
+		m_window->draw(i.Item().getCircle());
+	for(DListIterator<AnimatedBall> i = m_obstacleReactions.GetIterator(); i.Valid(); i.Forth())
+		m_window->draw(i.Item().getCircle());
+	m_window->draw(m_player.getCircle());
+	if(m_paused)
+		m_window->draw(m_pauseDim);
+	m_window->display();
 }
-
 
 sf::Vector2f Game::SeedStartingRandomBallPosition()
 {
@@ -208,4 +286,29 @@ sf::Vector2f Game::SeedRandomBallPosition()
 	}
 
 	return seed;
+}
+
+bool Game::CheckCircleCollision(const sf::CircleShape &p_circle1, const sf::CircleShape &p_circle2)
+{
+	float xDistance = p_circle1.getPosition().x - p_circle2.getPosition().x;
+	float yDistance = p_circle1.getPosition().y - p_circle2.getPosition().y;
+
+	return sqrt((xDistance * xDistance) + (yDistance * yDistance)) < p_circle1.getRadius() + p_circle2.getRadius();
+}
+
+void Game::BeginPause()
+{
+	m_paused = true;
+	m_pauseMousePosition.x = sf::Mouse::getPosition().x;
+	m_pauseMousePosition.y = sf::Mouse::getPosition().y;
+	m_window->setMouseCursorVisible(true);
+	m_backgroundMusic.pause();
+}
+
+void Game::EndPause()
+{
+	m_paused = false;
+	sf::Mouse::setPosition(m_pauseMousePosition);
+	m_window->setMouseCursorVisible(false);
+	m_backgroundMusic.play();
 }
