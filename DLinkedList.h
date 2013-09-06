@@ -124,6 +124,15 @@ private:
 	DListNode<Datatype>*m_head;
 	DListNode<Datatype>*m_tail;
 	int m_count;
+
+	void SetCount(int p_count)
+	{
+		m_count = p_count;
+
+		if(m_count < 0)
+			m_count = 0;
+	}
+
 public:
 
 	//----------------------------------------------------
@@ -159,13 +168,7 @@ public:
 		return m_count;
 	}
 
-	void SetCount(int p_count)
-	{
-		m_count = p_count;
-
-		if(m_count < 0)
-			m_count = 0;
-	}
+	
 
 	//----------------------------------------------------
 	//Name:				DLinkedList

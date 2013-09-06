@@ -6,6 +6,15 @@ namespace Fonts
 	enum ID
 	{
 		WhiteRabbit
+	};	
+}
+
+namespace Textures
+{
+	enum ID
+	{
+		Buttons,
+		Timtam
 	};
 }
 

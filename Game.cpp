@@ -1,13 +1,14 @@
 #include "Game.h"
 
-Game::Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimer, int p_objectiveArc, int p_maxBalls, 
+Game::Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimeLength, int p_objectiveArc, int p_maxBalls, 
 		   int p_minBalls, const sf::Font &p_font, sf::Vector2f p_pointsPosition, int p_pointsSize, 
 		   sf::Color p_pointsColor,  int p_pauseDimAlpha, std::string p_backgroundMusicFile, int p_backgroundMusicVolume, 
-		   int p_pointsPerBall) :
-	m_window(&p_window),
+		   int p_pointsPerBall, int p_gameLength, const Button &p_pauseCont, const Button &p_pauseQuit, const Button &p_endRetry,
+		   const Button &p_endQuit) :
+m_window(&p_window),
 	m_ballRadius(p_ballRadius), //15
 	m_objectiveHue(0),
-	m_objectiveTimer(p_objectiveTimer), //10
+	m_objectiveTimeLength(p_objectiveTimeLength), //10
 	m_objectiveArc(p_objectiveArc), //120
 	m_objectiveColors(3),
 	m_objectiveTriangle(sf::Triangles, 3),
@@ -21,12 +22,21 @@ Game::Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimer, i
 	m_obstacleReactions(),
 	m_player(p_window.getSize().x/2, p_window.getSize().y/2, sf::Color::White),
 	m_points("", p_font),
-	m_clock(),
+	m_objectiveClock(),
 	m_pauseDim(),
 	m_backgroundMusic(),
-	m_pointsPerBall(p_pointsPerBall)
+	m_pointsPerBall(p_pointsPerBall),
+	m_gameClock(),
+	m_gameTimer(),
+	m_gameOver(false),
+	m_gameLength(p_gameLength),
+	m_pauseCont(p_pauseCont),
+	m_pauseQuit(p_pauseQuit),
+	m_endRetry(p_endRetry),
+	m_endQuit(p_endQuit),
+	m_retry(false),
+	m_stillPlaying(true)
 {
-	srand(time(0));
 	for(int i = 0; i < m_averageBalls; i++)
 	{
 		sf::Vector2f randomStart = SeedStartingRandomBallPosition();
@@ -34,7 +44,7 @@ Game::Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimer, i
 		int vel = ((rand() % 3) + 2);
 		m_obstacles.Append(Ball(randomStart.x, randomStart.y, vel*-1, vel, ColorUtil::HueToRGB(hue), hue));
 	}
-	
+
 	m_points.setPosition(p_pointsPosition);
 	m_points.setCharacterSize(p_pointsSize);
 	m_points.setColor(p_pointsColor);
@@ -51,8 +61,7 @@ Game::Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimer, i
 	m_objectiveTriangle.getVerts()[1].color = ColorUtil::HueToRGB(m_objectiveHue);
 	m_objectiveTriangle.getVerts()[2].color = sf::Color::Transparent;
 
-	sf::Mouse::setPosition(sf::Vector2i(m_window->getSize().x/2, m_window->getSize().y/2), *m_window);
-	m_window->setMouseCursorVisible(false);
+
 	m_pauseDim.setSize(sf::Vector2f(m_window->getSize().x, m_window->getSize().y));
 	m_pauseDim.setFillColor(sf::Color(0, 0, 0, p_pauseDimAlpha));
 	m_pauseDim.setPosition(0, 0);
@@ -60,32 +69,39 @@ Game::Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimer, i
 	if(!m_backgroundMusic.openFromFile(p_backgroundMusicFile)) {}
 	//throw some shit
 	m_backgroundMusic.setVolume(p_backgroundMusicVolume);
-	m_backgroundMusic.play();
+
 }
 
-void Game::Run()
+bool Game::Run()
 {
+	StartingHousekeeping();
 	//This will have to change to something letting it come back to the main menu
-	while(m_window->isOpen())
+	while(m_window->isOpen() && m_stillPlaying)
 	{
-	//Run the game loop.
-	HandleEvents();
+		//Run the game loop.
+		HandleEvents();
 
-	if(!m_paused)
-	{
-		SpawnNewBalls();
-		MoveObstacles();
-		MoveObstacleReactions();
-		CheckCollisions();
-		CheckBallsLeavingScreen();
-		ProcessObjective();
-		AddCumilativePoints();
-		GeneratePointsText();
-	}
+		if(!m_paused && !m_gameOver)
+		{
+			SpawnNewBalls();
+			MoveObstacles();
+			MoveObstacleReactions();
+			CheckCollisions();
+			CheckBallsLeavingScreen();
+			ProcessObjective();
+			AddCumilativePoints();
+			GeneratePointsText();
+		}
 
-	CheckPause();
-	Render();
+		if(!m_gameOver)
+		{
+			CheckPause();
+			CheckGameOver();
+		}
+
+		Render();
 	}
+	return m_retry;
 }
 
 void Game::HandleEvents()
@@ -97,7 +113,7 @@ void Game::HandleEvents()
 			m_window->close();
 
 		//In game mouse events.
-		if(!m_paused)
+		if(!m_paused && !m_gameOver)
 		{
 			if(event.type == sf::Event::MouseMoved)
 			{
@@ -109,12 +125,89 @@ void Game::HandleEvents()
 				m_player.setLastX(event.mouseMove.x);
 				m_player.setLastY(event.mouseMove.y);
 			}
+
+			if(event.type == sf::Event::LostFocus)
+				BeginPause();
+			/*
+			if(!sf::IntRect(sf::Vector2i(m_window->getPosition()), sf::Vector2i(m_window->getSize())).contains(sf::Mouse::getPosition()))
+			{
+			BeginPause();
+			}
+			*/
 		}
+
 		//In paused mouse events.
+		else if(m_paused && !m_gameOver)
+		{
+			if(event.type == sf::Event::MouseMoved)
+			{
+				//Buttons
+				if(m_pauseCont.getSprite().getGlobalBounds().contains(event.mouseMove.x, event.mouseMove.y))
+					m_pauseCont.startHover();
+				else
+					m_pauseCont.endHover();
+
+				if(m_pauseQuit.getSprite().getGlobalBounds().contains(event.mouseMove.x, event.mouseMove.y))
+					m_pauseQuit.startHover();
+				else
+					m_pauseQuit.endHover();
+			}
+
+			if(event.type == sf::Event::MouseButtonPressed)
+			{
+				if(event.mouseButton.button == sf::Mouse::Left)
+				{
+					//Continue
+					if(m_pauseCont.getSprite().getGlobalBounds().contains(event.mouseButton.x, event.mouseButton.y))
+					{
+						EndPause();
+					}
+					//Quit
+					if(m_pauseQuit.getSprite().getGlobalBounds().contains(event.mouseButton.x, event.mouseButton.y))
+					{
+						ForceQuit();
+					}
+				}
+			}
+		}
+
+		//Game over
 		else
 		{
+			if(event.type == sf::Event::MouseMoved)
+			{
+				//Buttons
+				if(m_endRetry.getSprite().getGlobalBounds().contains(event.mouseMove.x, event.mouseMove.y))
+					m_endRetry.startHover();
+				else
+					m_endRetry.endHover();
 
+				if(m_endQuit.getSprite().getGlobalBounds().contains(event.mouseMove.x, event.mouseMove.y))
+					m_endQuit.startHover();
+				else
+					m_endQuit.endHover();
+			}
+
+			if(event.type == sf::Event::MouseButtonPressed)
+			{
+				if(event.mouseButton.button == sf::Mouse::Left)
+				{
+					//Continue
+					if(m_endRetry.getSprite().getGlobalBounds().contains(event.mouseButton.x, event.mouseButton.y))
+					{
+						m_retry = true;
+						ForceQuit();
+					}
+					//Quit
+					if(m_endQuit.getSprite().getGlobalBounds().contains(event.mouseButton.x, event.mouseButton.y))
+					{
+						ForceQuit();
+					}
+				}
+			}
 		}
+
+		
 	}
 }
 
@@ -185,7 +278,9 @@ void Game::CheckBallsLeavingScreen()
 
 void Game::ProcessObjective()
 {
-	if(m_clock.getElapsedTime().asSeconds() > m_objectiveTimer)
+	m_objectiveTimer += m_objectiveClock.restart();
+	m_gameTimer += m_gameClock.restart();
+	if(m_objectiveTimer.asSeconds() > m_objectiveTimeLength)
 	{
 		int currentObjectiveHue = m_objectiveHue;
 		while(m_objectiveHue == currentObjectiveHue)
@@ -193,9 +288,11 @@ void Game::ProcessObjective()
 			int randIndex = rand() % 3;
 			m_objectiveHue = m_objectiveColors[randIndex];
 		}
+		m_objectiveTimeLength = (rand() % 6) + 7
+			;
 		m_objectiveTriangle.getVerts()[1].color = ColorUtil::HueToRGB(m_objectiveHue);
 		m_objectiveTriangle.reset();
-		m_clock.restart();
+		m_objectiveTimer = sf::Time::Zero;
 	}
 
 	if(m_objectiveTriangle.isMoving())
@@ -250,8 +347,20 @@ void Game::Render()
 	for(DListIterator<AnimatedBall> i = m_obstacleReactions.GetIterator(); i.Valid(); i.Forth())
 		m_window->draw(i.Item().getCircle());
 	m_window->draw(m_player.getCircle());
-	if(m_paused)
+	if(m_paused || m_gameOver)
 		m_window->draw(m_pauseDim);
+	//if paused, draw pause stuff.
+	if(m_paused)
+	{
+		m_window->draw(m_pauseCont.getSprite());
+		m_window->draw(m_pauseQuit.getSprite());
+	}
+	//if game over, draw game over stuff
+	if(m_gameOver)
+	{
+		m_window->draw(m_endRetry.getSprite());
+		m_window->draw(m_endQuit.getSprite());
+	}
 	m_window->display();
 }
 
@@ -276,7 +385,7 @@ sf::Vector2f Game::SeedRandomBallPosition()
 
 	if(xaxis)
 	{
-		seed.x = rand() % m_window->getSize().y + 1;
+		seed.x = rand() % m_window->getSize().x + 1;
 		seed.y = 0 - m_ballRadius;
 	}
 	else
@@ -301,6 +410,23 @@ void Game::BeginPause()
 	m_paused = true;
 	m_pauseMousePosition.x = sf::Mouse::getPosition().x;
 	m_pauseMousePosition.y = sf::Mouse::getPosition().y;
+
+	/*
+	//Need to put the mouse position back onto where the window is, so that is doesnt get stuck on pause after resuming play.
+	if(m_pauseMousePosition.x <= m_window->getPosition().x)
+	m_pauseMousePosition.x = m_window->getPosition().x;
+
+	if(m_pauseMousePosition.x >= (m_window->getPosition().x + m_window->getSize().x))
+	m_pauseMousePosition.x = (m_window->getPosition().x + m_window->getSize().x);
+
+	if(m_pauseMousePosition.y <= m_window->getPosition().y)
+	m_pauseMousePosition.y = m_window->getPosition().y;
+
+	if(m_pauseMousePosition.y >= (m_window->getPosition().y + m_window->getSize().y))
+	m_pauseMousePosition.y = (m_window->getPosition().y + m_window->getSize().y);
+
+	*/
+
 	m_window->setMouseCursorVisible(true);
 	m_backgroundMusic.pause();
 }
@@ -311,4 +437,30 @@ void Game::EndPause()
 	sf::Mouse::setPosition(m_pauseMousePosition);
 	m_window->setMouseCursorVisible(false);
 	m_backgroundMusic.play();
+	m_gameClock.restart();
+	m_objectiveClock.restart();
+}
+
+void Game::StartingHousekeeping()
+{
+	sf::Mouse::setPosition(sf::Vector2i(m_window->getSize().x/2, m_window->getSize().y/2), *m_window);
+	m_window->setMouseCursorVisible(false);
+	m_backgroundMusic.play();
+	m_objectiveClock.restart();
+	m_gameClock.restart();
+}
+
+void Game::CheckGameOver()
+{
+	if(m_gameTimer.asSeconds() > m_gameLength)
+	{
+		m_backgroundMusic.pause();
+		m_window->setMouseCursorVisible(true);
+		m_gameOver = true;
+	}
+}
+
+void Game::ForceQuit()
+{
+	m_stillPlaying = false;
 }
