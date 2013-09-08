@@ -51,6 +51,8 @@ private:
 	Button m_endQuit;
 	bool m_retry;
 	bool m_stillPlaying;
+	sf::Text m_endPoints;
+	int m_endPointsSize;
 
 	void StartingHousekeeping();
 	void HandleEvents();
@@ -78,7 +80,7 @@ public:
 		int m_minBalls, const sf::Font &p_font, sf::Vector2f p_pointsPosition, int p_pointsSize, 
 		sf::Color p_pointsColor,  int p_pauseDimAlpha, std::string p_backgroundMusicFile, int p_backgroundMusicVolume, 
 		int p_pointsPerBall, int p_gameLength, const Button &p_pauseCont, const Button &p_pauseQuit, const Button &p_endRetry,
-		const Button &p_endQuit);
+		const Button &p_endQuit, int p_endPointsSize);
 	Game();
 
 	bool Run();

@@ -4,7 +4,7 @@ Game::Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimeLeng
 		   int p_minBalls, const sf::Font &p_font, sf::Vector2f p_pointsPosition, int p_pointsSize, 
 		   sf::Color p_pointsColor,  int p_pauseDimAlpha, std::string p_backgroundMusicFile, int p_backgroundMusicVolume, 
 		   int p_pointsPerBall, int p_gameLength, const Button &p_pauseCont, const Button &p_pauseQuit, const Button &p_endRetry,
-		   const Button &p_endQuit) :
+		   const Button &p_endQuit, int p_endPointsSize) :
 m_window(&p_window),
 	m_ballRadius(p_ballRadius), //15
 	m_objectiveHue(0),
@@ -35,7 +35,9 @@ m_window(&p_window),
 	m_endRetry(p_endRetry),
 	m_endQuit(p_endQuit),
 	m_retry(false),
-	m_stillPlaying(true)
+	m_stillPlaying(true),
+	m_endPointsSize(p_endPointsSize),
+	m_endPoints("", p_font)
 {
 	for(int i = 0; i < m_averageBalls; i++)
 	{
@@ -70,6 +72,8 @@ m_window(&p_window),
 	//throw some shit
 	m_backgroundMusic.setVolume(p_backgroundMusicVolume);
 
+	m_endPoints.setCharacterSize(p_endPointsSize);
+	m_endPoints.setColor(p_pointsColor);
 }
 
 bool Game::Run()
@@ -207,7 +211,7 @@ void Game::HandleEvents()
 			}
 		}
 
-		
+
 	}
 }
 
@@ -339,8 +343,8 @@ void Game::CheckPause()
 void Game::Render()
 {
 	m_window->clear();
-
-	m_window->draw(m_points);
+	if(!m_gameOver)
+		m_window->draw(m_points);
 	m_window->draw(m_objectiveTriangle.getVerts());
 	for(DListIterator<Ball> i = m_obstacles.GetIterator(); i.Valid(); i.Forth())
 		m_window->draw(i.Item().getCircle());
@@ -358,6 +362,7 @@ void Game::Render()
 	//if game over, draw game over stuff
 	if(m_gameOver)
 	{
+		m_window->draw(m_endPoints);
 		m_window->draw(m_endRetry.getSprite());
 		m_window->draw(m_endQuit.getSprite());
 	}
@@ -457,6 +462,14 @@ void Game::CheckGameOver()
 		m_backgroundMusic.pause();
 		m_window->setMouseCursorVisible(true);
 		m_gameOver = true;
+
+		std::ostringstream ss;
+		ss << m_player.getPoints();
+		m_endPoints.setString(ss.str());
+		m_endPoints.getGlobalBounds();
+
+		m_endPoints.setOrigin(m_endPoints.getGlobalBounds().width/2, m_endPoints.getGlobalBounds().height/2);
+		m_endPoints.setPosition(m_window->getSize().x/2, m_window->getSize().y/3);
 	}
 }
 
