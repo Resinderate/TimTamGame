@@ -66,6 +66,7 @@ private:
 	void GeneratePointsText();
 	void CheckPause();
 	void CheckGameOver();
+	void ProcessPlayerParticleSys();
 	void Render();
 
 	sf::Vector2f SeedStartingRandomBallPosition();

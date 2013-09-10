@@ -93,6 +93,7 @@ bool Game::Run()
 			CheckCollisions();
 			CheckBallsLeavingScreen();
 			ProcessObjective();
+			ProcessPlayerParticleSys();
 			AddCumilativePoints();
 			GeneratePointsText();
 		}
@@ -122,6 +123,7 @@ void Game::HandleEvents()
 			if(event.type == sf::Event::MouseMoved)
 			{
 				m_player.setPosition(event.mouseMove.x, event.mouseMove.y);
+				m_player.getParticleSys().moveEmitter(sf::Vector2f(event.mouseMove.x, event.mouseMove.y));
 				//Distance formulae
 				int points = sqrt( (event.mouseMove.x - m_player.getLastX() ) * (event.mouseMove.x - m_player.getLastX() ) )
 					+	 sqrt( (event.mouseMove.y - m_player.getLastY() ) * (event.mouseMove.y - m_player.getLastY() ) );
@@ -262,6 +264,7 @@ void Game::CheckCollisions()
 
 			//Could use the ball color too, check it out
 			m_obstacleReactions.Append(AnimatedBall(i.Item().getCircle().getPosition(), sf::Color(i.Item().getColor())));
+			m_player.getParticleSys().setColor(i.Item().getColor());
 			m_obstacles.Remove(i);
 			//amount of points for a ball
 			m_player.addPoints(m_pointsPerBall);
@@ -345,6 +348,7 @@ void Game::Render()
 	m_window->clear();
 	if(!m_gameOver)
 		m_window->draw(m_points);
+	m_window->draw(m_player.getParticleSys().getVerts());
 	m_window->draw(m_objectiveTriangle.getVerts());
 	for(DListIterator<Ball> i = m_obstacles.GetIterator(); i.Valid(); i.Forth())
 		m_window->draw(i.Item().getCircle());
@@ -417,7 +421,7 @@ void Game::BeginPause()
 	m_pauseMousePosition.y = sf::Mouse::getPosition().y;
 
 	/*
-	//Need to put the mouse position back onto where the window is, so that is doesnt get stuck on pause after resuming play.
+	//Need to put the mouse position back onto where the window is, so that is doesnt get stuck on pause after resuming
 	if(m_pauseMousePosition.x <= m_window->getPosition().x)
 	m_pauseMousePosition.x = m_window->getPosition().x;
 
@@ -476,4 +480,9 @@ void Game::CheckGameOver()
 void Game::ForceQuit()
 {
 	m_stillPlaying = false;
+}
+
+void Game::ProcessPlayerParticleSys()
+{
+	m_player.getParticleSys().processParticles();
 }

@@ -5,7 +5,8 @@ Player::Player(float p_x, float p_y, const sf::Color &p_color) :
 	m_points(0),
 	m_multiplier(1),
 	m_lastX(p_x),
-	m_lastY(p_y)
+	m_lastY(p_y),
+	m_particleSys(p_color, sf::Vector2f(p_x, p_y), sf::Vector2f(-3, 3), 30, m_circle.getRadius(), 1000)
 {
 	m_circle.setPosition(p_x, p_y);
 	m_circle.setFillColor(p_color);
@@ -80,4 +81,9 @@ void Player::resetPoints()
 int Player::getPoints()
 {
 	return m_points;
+}
+
+ParticleSys& Player::getParticleSys()
+{
+	return m_particleSys;
 }

@@ -43,9 +43,9 @@ int main()
 	while(play)
 	{
 		Game game(mainWindow.getWindow(), 15, 10, 120, 25, 15, fonts.get(Fonts::WhiteRabbit), sf::Vector2f(30, 20),
-		 32, sf::Color::White, 180, "Assets/background.ogg", 40, 1000, 5, pauseContButton, pauseQuitButton, endRetryButton, endQuitButton, 150);
+		 32, sf::Color::White, 180, "Assets/background.ogg", 40, 1000, 60, pauseContButton, pauseQuitButton, endRetryButton, endQuitButton, 150);
 		play = game.Run();
 	}
-
+	
 	return 0;
 }
