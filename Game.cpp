@@ -1,26 +1,57 @@
+/*
+	Game.cpp
+	Written by Ronan Murphy circa Aug-Sep 2013.
+*/
 #include "Game.h"
 
+/*
+	Name:	Constructor
+	Desc:	Constructor for Game
+	Args:	p_window,				reference to the window to be used for the game
+			p_ballRadius,			radius to be used for the balls in the game
+			p_objectiveTimeLength,	the median length of the timer used for the objective
+			p_objectiveArc,			the arc of the color wheel to be used to be able to gain a multiplier
+			p_maxBalls,				the max amount of obstacles to be in the frame at the same time
+			p_minBalls,				the min amount of obstacles to be in the frame at the same time
+			p_font,					the font obj to be used for the points in the game
+			p_pointsPosition,		the position of the points in the game
+			p_pointsSize,			the size of the text used for the points
+			p_pointsColor,			the color of the text used for the points
+			p_pauseDimAlpha,		the alpha value to be used for when the game is paused
+			p_backgroundMusicFile,	the string of the file location for the background music
+			p_backgroundMusicVolume,the volume to be used for the background music
+			p_pointsPerBall,		the points to be given per ball in the game
+			p_gameLength,			the length of the game in seconds
+			p_pauseCont,			the button to be used on the pause screen for continueing
+			p_pauseQuit,			the button to be used on the pause screen for quitting
+			p_endRetry,				the button to be used on the end screen for retrying
+			p_endQuit,				the button to be used on the end screen for quitting
+			p_endPointsSize,		the size of the font to be used on points at the end of the game
+			p_ballBreak,			the SoundBuffer obj to be used for when a ball breaks in game
+			p_objChange,			the SoundBuffer obj to be used when the objective color changes in game
+	Rtrn:	None
+*/
 Game::Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimeLength, int p_objectiveArc, int p_maxBalls, 
 		   int p_minBalls, const sf::Font &p_font, sf::Vector2f p_pointsPosition, int p_pointsSize, 
 		   sf::Color p_pointsColor,  int p_pauseDimAlpha, std::string p_backgroundMusicFile, int p_backgroundMusicVolume, 
 		   int p_pointsPerBall, int p_gameLength, const Button &p_pauseCont, const Button &p_pauseQuit, const Button &p_endRetry,
-		   const Button &p_endQuit, int p_endPointsSize) :
+		   const Button &p_endQuit, int p_endPointsSize, const sf::SoundBuffer &p_ballBreak, const sf::SoundBuffer &p_objChange) :
 m_window(&p_window),
-	m_ballRadius(p_ballRadius), //15
+	m_ballRadius(p_ballRadius),
 	m_objectiveHue(0),
-	m_objectiveTimeLength(p_objectiveTimeLength), //10
-	m_objectiveArc(p_objectiveArc), //120
+	m_objectiveTimeLength(p_objectiveTimeLength),
+	m_objectiveArc(p_objectiveArc),
 	m_objectiveColors(3),
 	m_objectiveTriangle(sf::Triangles, 3),
 	m_paused(false),
 	m_pausedKeyDown(false),
 	m_pauseMousePosition(),
-	m_maxBalls(p_maxBalls), //30
-	m_minBalls(p_minBalls), //20
+	m_maxBalls(p_maxBalls),
+	m_minBalls(p_minBalls),
 	m_averageBalls((p_maxBalls + p_minBalls) / 2),
 	m_obstacles(),
 	m_obstacleReactions(),
-	m_player(p_window.getSize().x/2, p_window.getSize().y/2, sf::Color::White),
+	m_player(sf::Vector2f(p_window.getSize().x/2, p_window.getSize().y/2), sf::Color::White),
 	m_points("", p_font),
 	m_objectiveClock(),
 	m_pauseDim(),
@@ -37,14 +68,16 @@ m_window(&p_window),
 	m_retry(false),
 	m_stillPlaying(true),
 	m_endPointsSize(p_endPointsSize),
-	m_endPoints("", p_font)
+	m_endPoints("", p_font),
+	m_ballBreak(p_ballBreak),
+	m_objChange(p_objChange)
 {
 	for(int i = 0; i < m_averageBalls; i++)
 	{
-		sf::Vector2f randomStart = SeedStartingRandomBallPosition();
+		sf::Vector2f randomStart = seedStartingRandomBallPosition();
 		int hue = rand() % 359;
 		int vel = ((rand() % 3) + 2);
-		m_obstacles.Append(Ball(randomStart.x, randomStart.y, vel*-1, vel, ColorUtil::HueToRGB(hue), hue));
+		m_obstacles.Append(Ball(randomStart, sf::Vector2f(vel*-1, vel), ColorUtil::HueToRGB(hue), hue));
 	}
 
 	m_points.setPosition(p_pointsPosition);
@@ -74,42 +107,56 @@ m_window(&p_window),
 
 	m_endPoints.setCharacterSize(p_endPointsSize);
 	m_endPoints.setColor(p_pointsColor);
+
+	m_ballBreak.setVolume(30);
+	m_objChange.setVolume(45);
 }
 
-bool Game::Run()
+/*
+	Name:	run
+	Desc:	main function used to run the game, calling everything else needed to function inside
+	Args:	None
+	Rtrn:	m_retry,	a bool to determine if the player wants to play again 
+*/
+bool Game::run()
 {
-	StartingHousekeeping();
-	//This will have to change to something letting it come back to the main menu
+	startingHousekeeping();
 	while(m_window->isOpen() && m_stillPlaying)
 	{
 		//Run the game loop.
-		HandleEvents();
+		handleEvents();
 
 		if(!m_paused && !m_gameOver)
 		{
-			SpawnNewBalls();
-			MoveObstacles();
-			MoveObstacleReactions();
-			CheckCollisions();
-			CheckBallsLeavingScreen();
-			ProcessObjective();
-			ProcessPlayerParticleSys();
-			AddCumilativePoints();
-			GeneratePointsText();
+			spawnNewBalls();
+			moveObstacles();
+			moveObstacleReactions();
+			checkCollisions();
+			checkBallsLeavingScreen();
+			processObjective();
+			processPlayerParticleSys();
+			addCumilativePoints();
+			generatePointsText();
 		}
 
 		if(!m_gameOver)
 		{
-			CheckPause();
-			CheckGameOver();
+			checkPause();
+			checkGameOver();
 		}
 
-		Render();
+		render();
 	}
 	return m_retry;
 }
 
-void Game::HandleEvents()
+/*
+	Name:	handleEvents
+	Desc:	handles all the window events and the events related to the paused and end game screens
+	Args:	None
+	Rtrn:	None
+*/
+void Game::handleEvents()
 {
 	sf::Event event;
 	while (m_window->pollEvent(event))
@@ -125,19 +172,21 @@ void Game::HandleEvents()
 				m_player.setPosition(event.mouseMove.x, event.mouseMove.y);
 				m_player.getParticleSys().moveEmitter(sf::Vector2f(event.mouseMove.x, event.mouseMove.y));
 				//Distance formulae
-				int points = sqrt( (event.mouseMove.x - m_player.getLastX() ) * (event.mouseMove.x - m_player.getLastX() ) )
-					+	 sqrt( (event.mouseMove.y - m_player.getLastY() ) * (event.mouseMove.y - m_player.getLastY() ) );
+				int points = sqrt((event.mouseMove.x - m_player.getLastPos().x) * (event.mouseMove.x - m_player.getLastPos().x))
+					+	sqrt((event.mouseMove.y - m_player.getLastPos().y) * (event.mouseMove.y - m_player.getLastPos().y));
 				m_player.addPoints(points);
-				m_player.setLastX(event.mouseMove.x);
-				m_player.setLastY(event.mouseMove.y);
+				m_player.setLastPosition(sf::Vector2f(event.mouseMove.x, event.mouseMove.y));
 			}
 
 			if(event.type == sf::Event::LostFocus)
-				BeginPause();
+				beginPause();
+			//Feature not implemented due to unforseen problems. Related to pausing the game when the mouse leaves the 
+			//window area.
 			/*
-			if(!sf::IntRect(sf::Vector2i(m_window->getPosition()), sf::Vector2i(m_window->getSize())).contains(sf::Mouse::getPosition()))
+			if(!sf::IntRect(sf::Vector2i(m_window->getPosition()),
+				sf::Vector2i(m_window->getSize())).contains(sf::Mouse::getPosition()))
 			{
-			BeginPause();
+				BeginPause();
 			}
 			*/
 		}
@@ -166,12 +215,12 @@ void Game::HandleEvents()
 					//Continue
 					if(m_pauseCont.getSprite().getGlobalBounds().contains(event.mouseButton.x, event.mouseButton.y))
 					{
-						EndPause();
+						endPause();
 					}
 					//Quit
 					if(m_pauseQuit.getSprite().getGlobalBounds().contains(event.mouseButton.x, event.mouseButton.y))
 					{
-						ForceQuit();
+						forceQuit();
 					}
 				}
 			}
@@ -202,42 +251,60 @@ void Game::HandleEvents()
 					if(m_endRetry.getSprite().getGlobalBounds().contains(event.mouseButton.x, event.mouseButton.y))
 					{
 						m_retry = true;
-						ForceQuit();
+						forceQuit();
 					}
 					//Quit
 					if(m_endQuit.getSprite().getGlobalBounds().contains(event.mouseButton.x, event.mouseButton.y))
 					{
-						ForceQuit();
+						forceQuit();
 					}
 				}
 			}
 		}
-
-
 	}
 }
 
-void Game::SpawnNewBalls()
+/*
+	Name:	spawnNewBalls
+	Desc:	spawns a new ball if the obstacle list determines it needs one.
+			It trys to allow a buffer so that new balls don't simply immediatly respawn once they leave the screen.
+			Would lead to clumping.
+	Args:	None
+	Rtrn:	None
+*/
+void Game::spawnNewBalls()
 {
-	int random = rand() % m_maxBalls - m_minBalls; // 0-10 for now.
-	int comparison = m_obstacles.GetCount() - m_minBalls; // 0-10 for now
+	int random = rand() % m_maxBalls - m_minBalls;
+	int comparison = m_obstacles.GetCount() - m_minBalls;
 
 	if(random >= comparison && comparison != 10)
 	{
-		sf::Vector2f pos = SeedRandomBallPosition();
+		sf::Vector2f pos = seedRandomBallPosition();
 		int hue = rand() % 359;
 		int vel = ((rand() % 3) + 2);
-		m_obstacles.Append(Ball(pos.x, pos.y, vel*-1, vel, ColorUtil::HueToRGB(hue), hue));
+		m_obstacles.Append(Ball(pos,sf::Vector2f(vel*-1, vel), ColorUtil::HueToRGB(hue), hue));
 	}
 }
 
-void Game::MoveObstacles()
+/*
+	Name:	moveObstacles
+	Desc:	moves all the balls in the background of the game
+	Args:	None
+	Rtrn:	None
+*/
+void Game::moveObstacles()
 {
 	for(DListIterator<Ball> i = m_obstacles.GetIterator(); i.Valid(); i.Forth())
-		i.Item().Move();
+		i.Item().move();
 }
 
-void Game::MoveObstacleReactions()
+/*
+	Name:	moveObstacleReactions
+	Desc:	processes all the animations that are created once a ball is destroyed.
+	Args:	None
+	Rtrn:	None
+*/
+void Game::moveObstacleReactions()
 {
 	if(m_obstacleReactions.GetCount() > 0)
 	{
@@ -250,11 +317,18 @@ void Game::MoveObstacleReactions()
 	}
 }
 
-void Game::CheckCollisions()
+/*
+	Name:	checkCollisions
+	Desc:	checks to see if the player has hit any balls on the screen and if so, removes them and creates the
+			related reactions, such as adding point, creating a reaction animation and creating a sound effect
+	Args:	None
+	Rtrn:	None
+*/
+void Game::checkCollisions()
 {
 	for(DListIterator<Ball> i = m_obstacles.GetIterator(); i.Valid(); i.Forth())
 	{
-		if(CheckCircleCollision(m_player.getCircle(), i.Item().getCircle()))
+		if(checkCircleCollision(m_player.getCircle(), i.Item().getCircle()))
 		{
 			int currentHue = i.Item().getHue() % 300;
 			if( (currentHue - m_objectiveHue) <= 60 && (currentHue - m_objectiveHue)  >= -60)
@@ -262,28 +336,39 @@ void Game::CheckCollisions()
 			else
 				m_player.setMultiplier(1);	//Back to deafault.
 
-			//Could use the ball color too, check it out
 			m_obstacleReactions.Append(AnimatedBall(i.Item().getCircle().getPosition(), sf::Color(i.Item().getColor())));
 			m_player.getParticleSys().setColor(i.Item().getColor());
 			m_obstacles.Remove(i);
-			//amount of points for a ball
+
 			m_player.addPoints(m_pointsPerBall);
+			m_ballBreak.play();
 		}
 	}
 }
 
-void Game::CheckBallsLeavingScreen()
+/*
+	Name:	checkBallsLeavingScreen
+	Desc:	checks to see if any balls have left the screen, and if so then removes them.
+	Args:	None
+	Rtrn:	None
+*/
+void Game::checkBallsLeavingScreen()
 {
 	for(DListIterator<Ball> i = m_obstacles.GetIterator(); i.Valid(); i.Forth())
 	{
-		if(i.Item().getX() < 0 - m_ballRadius || i.Item().getY() > m_window->getSize().y + m_ballRadius)
-		{
+		if(i.Item().getPosition().x < 0 - m_ballRadius || i.Item().getPosition().y > m_window->getSize().y + m_ballRadius)
 			m_obstacles.Remove(i);
-		}
 	}
 }
 
-void Game::ProcessObjective()
+/*
+	Name:	processObjective
+	Desc:	processes the UI element of the objective. Rotates the goal color as needed, and if so processes the 
+			related animation.
+	Args:	None
+	Rtrn:	None
+*/
+void Game::processObjective()
 {
 	m_objectiveTimer += m_objectiveClock.restart();
 	m_gameTimer += m_gameClock.restart();
@@ -295,24 +380,35 @@ void Game::ProcessObjective()
 			int randIndex = rand() % 3;
 			m_objectiveHue = m_objectiveColors[randIndex];
 		}
-		m_objectiveTimeLength = (rand() % 6) + 7
-			;
+		m_objectiveTimeLength = (rand() % 6) + 7;
 		m_objectiveTriangle.getVerts()[1].color = ColorUtil::HueToRGB(m_objectiveHue);
 		m_objectiveTriangle.reset();
 		m_objectiveTimer = sf::Time::Zero;
+		m_objChange.play();
 	}
-
 	if(m_objectiveTriangle.isMoving())
 		m_objectiveTriangle.move();
 }
 
-void Game::AddCumilativePoints()
+/*
+	Name:	addCumilativePoints
+	Desc:	adds a constant tick of points to the players total to keep a constant tiempo to the game
+			which helps the asthetic.
+	Args:	None
+	Rtrn:	None
+*/
+void Game::addCumilativePoints()
 {
-	//add a points per tick to have the points always increasing, adds to the mood of the game
 	m_player.addPoints(1);
 }
 
-void Game::GeneratePointsText()
+/*
+	Name:	generatePointsText
+	Desc:	generates the needed text for the points by retrieveing the players current multiplier and points.
+	Args:	None
+	Rtrn:	None
+*/
+void Game::generatePointsText()
 {
 	std::ostringstream ss;
 
@@ -325,7 +421,13 @@ void Game::GeneratePointsText()
 	m_points.setString(sf::String(pointsStr));
 }
 
-void Game::CheckPause()
+/*
+	Name:	checkPause
+	Desc:	checks to see if the game must be paused or unpaused
+	Args:	None
+	Rtrn:	None
+*/
+void Game::checkPause()
 {
 	bool pauseKeyDownThisFrame = sf::Keyboard::isKeyPressed(sf::Keyboard::P);
 
@@ -333,17 +435,23 @@ void Game::CheckPause()
 	{
 		if(!m_paused)
 		{
-			BeginPause();
+			beginPause();
 		}
 		else
 		{
-			EndPause();
+			endPause();
 		}
 	}
 	m_pausedKeyDown = pauseKeyDownThisFrame;
 }
 
-void Game::Render()
+/*
+	Name:	render
+	Desc:	calls to render all the games information to the window.
+	Args:	None
+	Rtrn:	None
+*/
+void Game::render()
 {
 	m_window->clear();
 	if(!m_gameOver)
@@ -373,7 +481,13 @@ void Game::Render()
 	m_window->display();
 }
 
-sf::Vector2f Game::SeedStartingRandomBallPosition()
+/*
+	Name:	seedStartingRandomBallPosition
+	Desc:	gives a randomn ball position at the start of the game. Can be anywhere on the screen.
+	Args:	None
+	Rtrn:	sf::Vector2f,	the position of the new ball
+*/
+sf::Vector2f Game::seedStartingRandomBallPosition()
 {
 	sf::Vector2f seed;
 	seed.x = rand() % m_window->getSize().x; // + 1  ??
@@ -381,7 +495,14 @@ sf::Vector2f Game::SeedStartingRandomBallPosition()
 	return seed;
 }
 
-sf::Vector2f Game::SeedRandomBallPosition()
+/*
+	Name:	seedRandomBallPosition
+	Desc:	seeds a random ball position for during the game. These spawn along the top and right side of the window, 
+			as apposed to anywhere/
+	Args:	None
+	Rtrn:	sf::Vector2f,	the position of the new ball
+*/
+sf::Vector2f Game::seedRandomBallPosition()
 {
 	sf::Vector2f seed;
 
@@ -406,7 +527,14 @@ sf::Vector2f Game::SeedRandomBallPosition()
 	return seed;
 }
 
-bool Game::CheckCircleCollision(const sf::CircleShape &p_circle1, const sf::CircleShape &p_circle2)
+/*
+	Name:	checkCircleCollision
+	Desc:	given to circles, it will check to see if they are colliding.
+	Args:	p_circle1,	the first circle
+			p_circle2,	the second circle to check against.
+	Rtrn:	bool,	if the two are colliding
+*/
+bool Game::checkCircleCollision(const sf::CircleShape &p_circle1, const sf::CircleShape &p_circle2)
 {
 	float xDistance = p_circle1.getPosition().x - p_circle2.getPosition().x;
 	float yDistance = p_circle1.getPosition().y - p_circle2.getPosition().y;
@@ -414,12 +542,19 @@ bool Game::CheckCircleCollision(const sf::CircleShape &p_circle1, const sf::Circ
 	return sqrt((xDistance * xDistance) + (yDistance * yDistance)) < p_circle1.getRadius() + p_circle2.getRadius();
 }
 
-void Game::BeginPause()
+/*
+	Name:	beginPasue
+	Desc:	starts the procedure of a pause. Sets the cursor to be visible and stops the music
+	Args:	None
+	Rtrn:	None
+*/
+void Game::beginPause()
 {
 	m_paused = true;
 	m_pauseMousePosition.x = sf::Mouse::getPosition().x;
 	m_pauseMousePosition.y = sf::Mouse::getPosition().y;
 
+	//Also related to the previous unimplemented code, with the game pausing when the mouse leaves the window
 	/*
 	//Need to put the mouse position back onto where the window is, so that is doesnt get stuck on pause after resuming
 	if(m_pauseMousePosition.x <= m_window->getPosition().x)
@@ -440,7 +575,13 @@ void Game::BeginPause()
 	m_backgroundMusic.pause();
 }
 
-void Game::EndPause()
+/*
+	Name:	endPause
+	Desc:	ends the current pause, makes the cursor invisible again and resumes the music
+	Args:	None
+	Rtrn:	None
+*/
+void Game::endPause()
 {
 	m_paused = false;
 	sf::Mouse::setPosition(m_pauseMousePosition);
@@ -450,7 +591,13 @@ void Game::EndPause()
 	m_objectiveClock.restart();
 }
 
-void Game::StartingHousekeeping()
+/*
+	Name:	startHousekeeping
+	Desc:	does some startup managing of the game to make the window envirnment correct
+	Args:	None
+	Rtrn:	None
+*/
+void Game::startingHousekeeping()
 {
 	sf::Mouse::setPosition(sf::Vector2i(m_window->getSize().x/2, m_window->getSize().y/2), *m_window);
 	m_window->setMouseCursorVisible(false);
@@ -459,7 +606,13 @@ void Game::StartingHousekeeping()
 	m_gameClock.restart();
 }
 
-void Game::CheckGameOver()
+/*
+	Name:	checkGameOver
+	Desc:	checks to see if the game time is over yet
+	Args:	None
+	Rtrn:	None
+*/
+void Game::checkGameOver()
 {
 	if(m_gameTimer.asSeconds() > m_gameLength)
 	{
@@ -477,12 +630,24 @@ void Game::CheckGameOver()
 	}
 }
 
-void Game::ForceQuit()
+/*
+	Name:	forceQuit
+	Desc:	tells the game to quit
+	Args:	None
+	Rtrn:	None
+*/
+void Game::forceQuit()
 {
 	m_stillPlaying = false;
 }
 
-void Game::ProcessPlayerParticleSys()
+/*
+	Name:	processPlayerParticleSys
+	Desc:	processes the players particle system
+	Args:	None
+	Rtrn:	None
+*/
+void Game::processPlayerParticleSys()
 {
 	m_player.getParticleSys().processParticles();
 }

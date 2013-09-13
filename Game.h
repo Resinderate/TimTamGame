@@ -1,3 +1,7 @@
+/*
+	Game.h
+	Written by Ronan Murphy circa Aug-Sep 2013.
+*/
 #ifndef GAME_H
 #define GAME_H
 
@@ -19,73 +23,72 @@
 class Game 
 {
 private:
-	sf::RenderWindow *m_window;
-	int m_ballRadius;
-	int m_objectiveHue;
-	int m_objectiveTimeLength;
-	int m_objectiveArc;
-	std::vector<int> m_objectiveColors;
-	AnimatedVertexArray m_objectiveTriangle;
-	bool m_paused;
-	bool m_pausedKeyDown;
-	sf::Vector2i m_pauseMousePosition;
-	int m_maxBalls;
-	int m_minBalls;
-	int m_averageBalls;
-	DLinkedList<Ball> m_obstacles;
-	DLinkedList<AnimatedBall> m_obstacleReactions;
-	Player m_player;
-	sf::Text m_points;
-	sf::Clock m_objectiveClock;
-	sf::Time m_objectiveTimer;
-	sf::RectangleShape m_pauseDim;
-	sf::Music m_backgroundMusic;
-	int m_pointsPerBall;
-	sf::Clock m_gameClock;
-	sf::Time m_gameTimer;
-	bool m_gameOver;
-	int m_gameLength;
-	Button m_pauseCont;
-	Button m_pauseQuit;
-	Button m_endRetry;
-	Button m_endQuit;
-	bool m_retry;
-	bool m_stillPlaying;
-	sf::Text m_endPoints;
-	int m_endPointsSize;
+	AnimatedVertexArray			m_objectiveTriangle; 
+	bool						m_gameOver; 
+	bool						m_paused; 
+	bool						m_pausedKeyDown; 
+	bool						m_retry; 
+	bool						m_stillPlaying; 
+	Button						m_endQuit; 
+	Button						m_endRetry; 
+	Button						m_pauseCont; 
+	Button						m_pauseQuit; 
+	DLinkedList<AnimatedBall>	m_obstacleReactions; 
+	DLinkedList<Ball>			m_obstacles; 
+	int							m_averageBalls;
+	int							m_ballRadius; 
+	int							m_endPointsSize; 
+	int							m_gameLength; 
+	int							m_maxBalls; 
+	int							m_minBalls; 
+	int							m_objectiveArc; 
+	int							m_objectiveHue; 
+	int							m_objectiveTimeLength; 
+	int							m_pointsPerBall; 
+	Player						m_player; 
+	sf::Clock					m_gameClock; 
+	sf::Clock					m_objectiveClock; 
+	sf::Music					m_backgroundMusic; 
+	sf::RectangleShape			m_pauseDim; 
+	sf::RenderWindow			*m_window; 
+	sf::Sound					m_ballBreak; 
+	sf::Sound					m_objChange; 
+	sf::Text					m_endPoints; 
+	sf::Text					m_points; 
+	sf::Time					m_gameTimer; 
+	sf::Time					m_objectiveTimer; 
+	sf::Vector2i				m_pauseMousePosition; 
+	std::vector<int>			m_objectiveColors; 
 
-	void StartingHousekeeping();
-	void HandleEvents();
-	void SpawnNewBalls();
-	void MoveObstacles();
-	void MoveObstacleReactions();
-	void CheckCollisions();
-	void CheckBallsLeavingScreen();
-	void ProcessObjective();
-	void AddCumilativePoints();
-	void GeneratePointsText();
-	void CheckPause();
-	void CheckGameOver();
-	void ProcessPlayerParticleSys();
-	void Render();
-
-	sf::Vector2f SeedStartingRandomBallPosition();
-	sf::Vector2f SeedRandomBallPosition();
-	bool CheckCircleCollision(const sf::CircleShape &p_circle1, const sf::CircleShape &p_circle2);
-	void BeginPause();
-	void EndPause();
-	void ForceQuit();
+	bool			checkCircleCollision(const sf::CircleShape &p_circle1, const sf::CircleShape &p_circle2);
+	sf::Vector2f	seedRandomBallPosition();
+	sf::Vector2f	seedStartingRandomBallPosition();
+	void			addCumilativePoints();
+	void			beginPause();
+	void			checkBallsLeavingScreen();
+	void			checkCollisions();
+	void			checkGameOver();
+	void			checkPause();
+	void			endPause();
+	void			forceQuit();
+	void			generatePointsText();
+	void			handleEvents();
+	void			moveObstacleReactions();
+	void			moveObstacles();
+	void			processObjective();
+	void			processPlayerParticleSys();
+	void			render();
+	void			spawnNewBalls();
+	void			startingHousekeeping();
 
 public:
 	Game(sf::RenderWindow &p_window, int p_ballRadius, int p_objectiveTimer, int p_objectiveArc, int p_maxBalls, 
 		int m_minBalls, const sf::Font &p_font, sf::Vector2f p_pointsPosition, int p_pointsSize, 
 		sf::Color p_pointsColor,  int p_pauseDimAlpha, std::string p_backgroundMusicFile, int p_backgroundMusicVolume, 
-		int p_pointsPerBall, int p_gameLength, const Button &p_pauseCont, const Button &p_pauseQuit, const Button &p_endRetry,
-		const Button &p_endQuit, int p_endPointsSize);
+		int p_pointsPerBall, int p_gameLength, const Button &p_pauseCont, const Button &p_pauseQuit,
+		const Button &p_endRetry, const Button &p_endQuit, int p_endPointsSize, const sf::SoundBuffer &p_ballBreak,
+		const sf::SoundBuffer &p_objChange);
 	Game();
-
-	bool Run();
-	
-
+	bool run();
 };
 #endif

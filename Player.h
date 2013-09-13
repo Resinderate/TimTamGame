@@ -1,39 +1,35 @@
+/*
+	Player.h
+	Written by Ronan Murphy circa Aug-Sep 2013.
+*/
 #ifndef PLAYER_H
 #define PLAYER_H
 
 #include <SFML/Graphics.hpp>
 #include "ParticleSys.h"
 
-
 class Player
 {
 private:
+	int				m_multiplier;
+	int				m_points;
+	ParticleSys		m_particleSys;
 	sf::CircleShape m_circle;
-	int m_points;
-	int m_multiplier;
-	//These represent where the player was on the last frame. Used to calculate some part of the points.
-	float m_lastX;
-	float m_lastY;
-	ParticleSys m_particleSys;
+	sf::Vector2f	m_lastPos;
 	
 public:
-	Player(float p_x, float p_y, const sf::Color &p_color);
-	void setCircle(sf::CircleShape p_circle);
-	void setPosition(float p_x, float p_y);
-	void setLastX(float p_lastX);
-	void setLastY(float p_lastY);
-	void setMultiplier(int p_multiplier);
-	void addPoints(int p_points);
+	Player(sf::Vector2f p_pos, const sf::Color &p_color);
+	int				getMultiplier();
+	int				getPoints();
+	ParticleSys&	getParticleSys();
 	sf::CircleShape getCircle();
-	float getX();
-	float getY();
-	float getLastX();
-	float getLastY();
-	int getMultiplier();
-	void resetPoints();
-	int getPoints();
-	ParticleSys& getParticleSys();
-	
-
+	sf::Vector2f	getLastPos();
+	sf::Vector2f	getPos();
+	void			addPoints(int p_points);
+	void			resetPoints();
+	void			setCircle(sf::CircleShape p_circle);
+	void			setLastPosition(sf::Vector2f p_lastPos);
+	void			setMultiplier(int p_multiplier);
+	void			setPosition(float p_x, float p_y);
 };
 #endif

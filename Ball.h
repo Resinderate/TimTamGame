@@ -1,3 +1,7 @@
+/*
+	Ball.h
+	Written by Ronan Murphy circa Aug-Sep 2013.
+*/
 #ifndef BALL_H
 #define BALL_H
 
@@ -7,25 +11,21 @@ class Ball
 {
 private:
 	sf::CircleShape m_circle;
-	float m_xVelocity;
-	float m_yVelocity;
-	int m_hue;
+	int				m_hue;
+	sf::Vector2f	m_velocity;
 	
 public:
 	Ball();
-	Ball(float p_x, float p_y, float p_xVelocity, float p_yVelocity, sf::Color p_color, int p_hue);
-	void setPos(float p_x, float p_y);
-	void setXVel(float p_xVel);
-	void setYVel(float p_yVel);
-	void setColor(sf::Color p_color);
-	void setHue(int p_hue);
-	float getX();
-	float getY();
-	float getXVel();
-	float getYVel();
-	sf::Color getColor();
-	int getHue();
+	Ball(const sf::Vector2f &p_pos, const sf::Vector2f &p_velocity, const sf::Color &p_color, int p_hue);
+	sf::Vector2f	getPosition();
+	sf::Vector2f	getVelocity();
+	sf::Color		getColor();
+	int				getHue();
 	sf::CircleShape getCircle();
-	void Move();
+	void			move();
+	void			setPos(const sf::Vector2f &p_pos);
+	void			setVelocty(const sf::Vector2f &p_velocity);
+	void			setColor(sf::Color p_color);
+	void			setHue(int p_hue);
 };
 #endif

@@ -1,6 +1,8 @@
+/*
+	ColorUtil.cpp
+	Written by Ronan Murphy circa Aug-Sep 2013. with contributions from elsewhere.
+*/
 #include "ColorUtil.h"
-
-
 
 namespace ColorUtil
 {
@@ -72,7 +74,10 @@ namespace ColorUtil
 	}
 
 	/*
-		Basically gets a random int from 0-359
+	Name:	GetRandomHue
+	Desc:	Returns a random number in the range 0-359, to represent a random hue in the HSL table.
+	Args:	None
+	Rtrn:	None
 	*/
 	int GetRandomHue()
 	{
@@ -81,8 +86,11 @@ namespace ColorUtil
 	}
 
 	/*
-		Give me a hue from 0-359
-		I give you a color in RGB
+	Name:	HueToRGB
+	Desc:	given a hue in the form of an int, it will return a sf::Color with that hue, with full saturation and meduim
+			lightness.
+	Args:	p_hue,	the number representing the hue you want.
+	Rtrn:	the sf::Color of the hue you gave it.
 	*/
 	sf::Color HueToRGB(int p_hue)
 	{

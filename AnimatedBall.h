@@ -1,3 +1,7 @@
+/*
+	AnimatedBall.h
+	Written by Ronan Murphy circa Aug-Sep 2013.
+*/
 #ifndef ANIMATEDBALL_H
 #define ANIMATEDBALL_H
 
@@ -5,19 +9,19 @@
 
 class AnimatedBall
 {
+private:
+	bool			m_over;
+	float			m_duration;
+	int				m_alphaReducePerFrame;
+	sf::CircleShape m_circle;
+	sf::Vector2f	m_endScale;
+	sf::Vector2f	m_scaleIncreasePerFrame;
+
 public:
 	AnimatedBall();
 	AnimatedBall(const sf::Vector2f &p_position, sf::Color p_color);
-	void update();	//Increases the scale and modifies the alpha
-	bool isOver();
 	sf::CircleShape getCircle();
-
-private:
-	sf::CircleShape m_circle;
-	float m_duration;
-	sf::Vector2f m_endScale;
-	bool m_over;
-	int m_alphaReducePerFrame;
-	sf::Vector2f m_scaleIncreasePerFrame;
+	bool			isOver();
+	void			update();
 };
-#endif
+#endif //ANIMATEDBALL_H
